@@ -22,25 +22,38 @@ class Entity:
     def isObstacle(self):
         return self._type == "WALL" or self._type == "ROOT" or self._type == "BASIC"
     
-    def isOwner(self):
+    def is_owner(self):
         return self.owner == 1
 
-    def gets_harvested(self, map):
+    def gets_harvested_by_us(self, map):
         right =  map[self.x+1][self.y]
         down =  map[self.x][self.y+1]
         left =  map[self.x-1][self.y]
         up =  map[self.x][self.y-1]
-        if right._type == "HARVESTER" and right.organ_dir == "W":
+        if right != None and right._type == "HARVESTER" and right.organ_dir == "W" and right.is_owner():
             return True
-        elif down._type == "HARVESTER" and down.organ_dir == "N":
+        elif down != None and down._type == "HARVESTER" and down.organ_dir == "N" and down.is_owner():
             return True
-        elif left._type == "HARVESTER" and left.organ_dir == "E":
+        elif left != None and left._type == "HARVESTER" and left.organ_dir == "E" and left.is_owner():
             return True
-        elif up._type == "HARVESTER" and up.organ_dir == "S":
+        elif up != None and up._type == "HARVESTER" and up.organ_dir == "S" and up.is_owner():
             return True
         return False
 
-    
+    def get_free_neighbor_coords(self, map):
+        right =  map[self.x+1][self.y]
+        down =  map[self.x][self.y+1]
+        left =  map[self.x-1][self.y]
+        up =  map[self.x][self.y-1]
+        if right == None:
+            return (self.x+1, self.y)
+        if down == None:
+            return (self.x, self.y+1)
+        if left == None:
+            return (self.x-1, self.y)
+        if up == None:
+            return (self.x, self.y-1)
+        return None
 
 class ProteinStock:
     def __init__(self, my_a, my_b, my_c, my_d):
@@ -103,6 +116,10 @@ class Map:
 
     def get_nearest_protein(self, entity):
         proteins = self.get_all_entities_by_type("A")
+        # Filter out proteins that are harvested by us
+        proteins = [p for p in proteins if not p.gets_harvested_by_us(self.map)]
+        if len(proteins) == 0:
+            return None
         distances = [(protein, Entity.get_distance(entity, protein)) for protein in proteins]
         # Find the protein with the minimum distance
         nearest_protein = min(distances, key=lambda x: x[1])[0]
@@ -113,6 +130,8 @@ class Map:
         distances = {}
         for owner in owners:
             nearest_protein = self.get_nearest_protein(owner)
+            if nearest_protein == None:
+                return None, None
             distances[(owner, nearest_protein)] = Entity.get_distance(owner, nearest_protein)
 
         # Find the (owner, nearest_protein) pair with the minimum distance
@@ -163,6 +182,14 @@ class Map:
         #Basic
         return f"GROW {organ.organ_id} {protein.x} {protein.y} BASIC"
 
+    def default_move(self):
+        owners = self.get_all_entities_by_owner(1)
+        for o in owners:
+            coords = o.get_free_neighbor_coords(self.map)
+            if coords == None:
+                continue
+            else:
+                return f"GROW {o.organ_id} {coords[0]} {coords[1]} BASIC"
 
     #def hasObstacle(entity1, entity2):
 
@@ -219,8 +246,15 @@ while True:
         #print(f"Nearest protein coords: {nearest_protein.x} , {nearest_protein.y}", file=sys.stderr, flush=True)
         
         owner, protein = map.get_nearest_owner_protein_pair()
+        command = "HELP"
+        # Case: No more protein :(
+        if owner == None or protein == None or owner._type == "HARVESTER":
+            command = map.default_move()
+        else:
+            command = map.get_next_move(map.get_nearest_owner_protein_pair(), my_protein_stock)
         
-        command = map.get_next_move(map.get_nearest_owner_protein_pair(), my_protein_stock)
+        
+
         print(command)
         #print("GROW 1 16 8 BASIC")
 
