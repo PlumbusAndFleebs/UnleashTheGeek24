@@ -245,6 +245,10 @@ while True:
         #nearest_protein = map.get_nearest_protein(map.get_all_entities_by_type("A")[0])
         #print(f"Nearest protein coords: {nearest_protein.x} , {nearest_protein.y}", file=sys.stderr, flush=True)
         
+        # 1 Chase available proteins
+        # 2 Chase opponents root
+        # 3 Default
+
         owner, protein = map.get_nearest_owner_protein_pair()
         command = "HELP"
         # Case: No more protein :(
